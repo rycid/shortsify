@@ -15,7 +15,7 @@ It takes landscape videos and automatically edits them for mobile-friendly verti
 
 - Convert landscape videos to 9:16 vertical format
 - Background blurring effect for a professional look
-- Super simple UI. Literally just two buttons needed
+- Super simple UI. Literally just three buttons needed
 - Progress tracking so you know when it'll be done
 - No watermarks, no annoying logos, just your video
 - Free and open source
