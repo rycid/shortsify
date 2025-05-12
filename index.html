@@ -5,12 +5,22 @@
   <title>shortsify</title>
   <link rel="stylesheet" href="styles.css">
 </head>
-<body>
-  <div class="container">
-    <h1>shortsify</h1>
-    <p style="text-align: center; margin-bottom: 30px;">
-      Convert landscape videos to mobile-friendly formats ready to be uploaded to your fav brainrot platforms.
-    </p>
+<body>  <div class="container">
+    <header>
+      <h1>shortsify</h1>
+      <p class="tagline">
+        Convert landscape videos to mobile-friendly formats ready to be uploaded to your fav brainrot platforms.
+      </p>
+    </header><div class="options">
+      <label>
+        Speed/Quality:
+        <select id="process-speed">
+          <option value="quality">Best quality (slower)</option>
+          <option value="balanced" selected>Balanced</option>
+          <option value="speed">Fastest (lower quality)</option>
+        </select>
+      </label>
+    </div>
     <div class="button-group">
       <button id="select">Select Video</button>
       <button id="select-output" disabled>Select Output</button>
