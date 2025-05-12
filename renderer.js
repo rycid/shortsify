@@ -1,7 +1,9 @@
 const selectBtn = document.getElementById('select');
+const selectOutputBtn = document.getElementById('select-output');
 const processBtn = document.getElementById('process');
 const statusEl = document.getElementById('status');
 const fileDisplayEl = document.getElementById('file-display');
+const outputDisplayEl = document.getElementById('output-display');
 const progressContainer = document.querySelector('.progress-container');
 const progressBar = document.getElementById('progress-bar');
 
@@ -21,6 +23,19 @@ document.getElementById('select').addEventListener('click', async () => {
       <strong>Selected File:</strong> ${getFileName(filePath)}<br>
       <small>${filePath}</small>
     `;
+      // default output path, but we keep the og file extension
+    const fileExtension = filePath.match(/\.(\w+)$/);
+    const extension = fileExtension ? fileExtension[0] : '.mp4';
+    const defaultOutputPath = filePath.replace(/\.\w+$/, `_shortsify${extension}`);
+    window.selectedOutput = defaultOutputPath;
+    
+    selectOutputBtn.disabled = false;
+    
+    outputDisplayEl.style.display = 'block';
+    outputDisplayEl.innerHTML = `
+      <strong>Output File:</strong> ${getFileName(defaultOutputPath)}<br>
+      <small>${defaultOutputPath}</small>
+    `;
     
     // can actually process now
     processBtn.disabled = false;
@@ -29,18 +44,45 @@ document.getElementById('select').addEventListener('click', async () => {
   }
 });
 
+document.getElementById('select-output').addEventListener('click', async () => {
+  if (!window.selectedVideo) return;
+
+  const fileExtension = window.selectedVideo.match(/\.(\w+)$/);
+  const extension = fileExtension ? fileExtension[0] : '.mp4';
+  const defaultOutputPath = window.selectedVideo.replace(/\.\w+$/, `_shortsify${extension}`);
+  const outputPath = await window.electronAPI.selectOutputPath(defaultOutputPath);
+  
+  if (outputPath) {
+    window.selectedOutput = outputPath;
+    
+    outputDisplayEl.style.display = 'block';
+    outputDisplayEl.innerHTML = `
+      <strong>Output File:</strong> ${getFileName(outputPath)}<br>
+      <small>${outputPath}</small>
+    `;
+    
+    statusEl.innerText = 'Ready to process';
+  }
+});
+
 document.getElementById('process').addEventListener('click', async () => {
   if (!window.selectedVideo) return alert('No video selected.');
-  
-  const outputPath = window.selectedVideo.replace(/\.(\w+)$/, '_tiktokified.mp4');
-  
+
+  // no custom output? we make one with the og extension
+  let outputPath = window.selectedOutput;
+  if (!outputPath) {
+    const fileExtension = window.selectedVideo.match(/\.(\w+)$/);
+    const extension = fileExtension ? fileExtension[0] : '.mp4';
+    outputPath = window.selectedVideo.replace(/\.\w+$/, `_shortsify${extension}`);
+  }
+
   const fileExists = await window.electronAPI.checkFileExists(outputPath);
   
   // some overwrite confirmation
   if (fileExists) {
     const confirmOverwrite = await window.electronAPI.showConfirmDialog({
       title: 'File Already Exists',
-      message: `The file "${getFileName(outputPath)}" already exists. Would you like to overwrite it?`
+      message: `The file "${getFileName(outputPath)}" already exists at the location. Would you like to overwrite it?`
     });
     
     if (!confirmOverwrite) {
@@ -51,6 +93,7 @@ document.getElementById('process').addEventListener('click', async () => {
   
   // disable the btns while processing
   selectBtn.disabled = true;
+  selectOutputBtn.disabled = true;
   processBtn.disabled = true;
   
   progressContainer.style.display = 'block';
@@ -73,11 +116,11 @@ document.getElementById('process').addEventListener('click', async () => {
       <small>${outputPath}</small>
     `;
   } catch (err) {
-    statusEl.innerHTML = `<span style="color: #ff4d4f">✗ Error: ${err}</span>`;
-  } finally {
+    statusEl.innerHTML = `<span style="color: #ff4d4f">✗ Error: ${err}</span>`;  } finally {
     
     // we can enable the btns again
     selectBtn.disabled = false;
+    selectOutputBtn.disabled = false;
     processBtn.disabled = false;
   }
 });
