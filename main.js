@@ -1,11 +1,13 @@
-const { app, BrowserWindow, ipcMain, dialog } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, shell } = require('electron');
 const path = require('path');
 const { spawn } = require('child_process');
 
 function createWindow() {
   const win = new BrowserWindow({
     width: 800,
-    height: 600,
+    height: 700,
+    minWidth: 300,
+    minHeight: 600,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       nodeIntegration: true,
@@ -13,9 +15,40 @@ function createWindow() {
       devTools: false
     },
     autoHideMenuBar: true,
+    
   });
 
   win.loadFile('index.html');
+}
+
+function getEncoderSettings() {
+  // simple check for hw acceleration. need to improve this
+  try {
+    // nvidia 
+    const nvidia = require('child_process').execSync('nvidia-smi').toString();
+    return {
+      hwaccel: 'cuda',
+      vcodec: 'h264_nvenc',
+      preset: 'fast' 
+    };
+  } catch (e) {
+    try {
+      // amd
+      const amd = require('child_process').execSync('clinfo').toString();
+      return {
+        hwaccel: 'amf',
+        vcodec: 'h264_amf',
+        preset: 'speed'
+      };
+    } catch (e) {
+
+      return {
+        hwaccel: '',
+        vcodec: 'libx264',
+        preset: 'veryfast' // either ultrafast, superfast, veryfast, faster, fast
+      };
+    }
+  }
 }
 
 app.whenReady().then(() => {
@@ -53,21 +86,59 @@ app.whenReady().then(() => {
     });
     return result.response === 0; // true if "Yes" was clicked
   });
-  ipcMain.handle('process-video', async (event, inputPath, outputPath) => {
+  
+  ipcMain.handle('open-file-location', async (event, filePath) => {
+    try {
+      // If the file doesn't exist yet, show the directory
+      const fs = require('fs');
+      const dirPath = path.dirname(filePath);
+      
+      if (fs.existsSync(dirPath)) {
+        await shell.showItemInFolder(filePath);
+        return true;
+      }
+      return false;
+    } catch (err) {
+      console.error('Failed to open file location:', err);
+      return false;
+    }
+  });
+  
+  ipcMain.handle('process-video', async (event, inputPath, outputPath, speedSetting) => {
     return new Promise((resolve, reject) => {
     //   const ffmpegPath = path.join(__dirname, 'ffmpeg', 'ffmpegT.exe');
       const ffmpegPath = app.isPackaged
         ? path.join(process.resourcesPath, 'ffmpeg', 'ffmpegT.exe')
         : path.join(__dirname, 'ffmpeg', 'ffmpegT.exe');
+
+      let preset = 'medium'; // something balanced
+      if (speedSetting === 'speed') preset = 'ultrafast';
+      if (speedSetting === 'quality') preset = 'slow';
+
+      const complexFilter = speedSetting === 'speed' 
+  ? "[0:v]scale=-2:960,format=yuv420p,crop=540:960:(in_w-540)/2:0,boxblur=10:2[bg];[0:v]scale=540:-2,format=yuv420p[fg];[bg][fg]overlay=(W-w)/2:(H-h)/2,format=yuv420p,scale=1080:1920"
+  : "[0:v]scale=-2:1920,format=yuv420p,crop=1080:1920:(in_w-1080)/2:0,boxblur=20:5[bg];[0:v]scale=1080:-2,format=yuv420p[fg];[bg][fg]overlay=(W-w)/2:(H-h)/2,format=yuv420p";
         
+      const encoderSettings = getEncoderSettings();
+
       const args = [
-        '-y',  // overwrite files without asking again
+        '-y'  // overwrite files without asking again
+      ]
+
+      if (encoderSettings.hwaccel) {
+        args.push('-hwaccel', encoderSettings.hwaccel);
+      }
+
+      args.push(
+        '-threads', '0',
         '-i', inputPath,
         '-filter_complex',
-        "[0:v]scale=-2:1920,crop=1080:1920:(in_w-1080)/2:0,boxblur=20:5[bg];[0:v]scale=1080:-2[fg];[bg][fg]overlay=(W-w)/2:(H-h)/2",
+        complexFilter,
+        '-c:v', encoderSettings.vcodec,
+        '-preset', encoderSettings.preset,
         '-c:a', 'copy',
         outputPath
-      ];
+      );
 
       const ffmpeg = spawn(ffmpegPath, args);
       
