@@ -34,8 +34,16 @@ document.getElementById('select').addEventListener('click', async () => {
     outputDisplayEl.style.display = 'block';
     outputDisplayEl.innerHTML = `
       <strong>Output File:</strong> ${getFileName(defaultOutputPath)}<br>
-      <small>${defaultOutputPath}</small>
+      <small class="file-path" data-path="${defaultOutputPath}">${defaultOutputPath}</small>
     `;
+    
+    // Make output path clickable
+    outputDisplayEl.querySelector('.file-path').addEventListener('click', (e) => {
+      const filePath = e.target.getAttribute('data-path');
+      if (filePath) {
+        window.electronAPI.openFileLocation(filePath);
+      }
+    });
     
     // can actually process now
     processBtn.disabled = false;
@@ -58,8 +66,16 @@ document.getElementById('select-output').addEventListener('click', async () => {
     outputDisplayEl.style.display = 'block';
     outputDisplayEl.innerHTML = `
       <strong>Output File:</strong> ${getFileName(outputPath)}<br>
-      <small>${outputPath}</small>
+      <small class="file-path" data-path="${outputPath}">${outputPath}</small>
     `;
+    
+    // Make output path clickable
+    outputDisplayEl.querySelector('.file-path').addEventListener('click', (e) => {
+      const filePath = e.target.getAttribute('data-path');
+      if (filePath) {
+        window.electronAPI.openFileLocation(filePath);
+      }
+    });
     
     statusEl.innerText = 'Ready to process';
   }
@@ -67,6 +83,7 @@ document.getElementById('select-output').addEventListener('click', async () => {
 
 document.getElementById('process').addEventListener('click', async () => {
   if (!window.selectedVideo) return alert('No video selected.');
+  const speedSetting = document.getElementById('process-speed').value;
 
   // no custom output? we make one with the og extension
   let outputPath = window.selectedOutput;
@@ -108,16 +125,22 @@ document.getElementById('process').addEventListener('click', async () => {
   });
   
   try {
-    await window.electronAPI.processVideo(window.selectedVideo, outputPath);
+    await window.electronAPI.processVideo(window.selectedVideo, outputPath, speedSetting);
     progressBar.style.width = '100%';
     statusEl.innerHTML = `
       <span style="color: #00a854">✓ Processing complete!</span><br>
-      Saved to: ${getFileName(outputPath)}<br>
-      <small>${outputPath}</small>
+      Saved to: <small class="file-path" data-path="${outputPath}">${outputPath}</small>
     `;
-  } catch (err) {
-    statusEl.innerHTML = `<span style="color: #ff4d4f">✗ Error: ${err}</span>`;  } finally {
     
+    statusEl.querySelector('.file-path').addEventListener('click', (e) => {
+      const filePath = e.target.getAttribute('data-path');
+      if (filePath) {
+        window.electronAPI.openFileLocation(filePath);
+      }
+    });
+  } catch (err) {
+    statusEl.innerHTML = `<span style="color: #ff4d4f">✗ Error: ${err}</span>`;
+  } finally {
     // we can enable the btns again
     selectBtn.disabled = false;
     selectOutputBtn.disabled = false;
