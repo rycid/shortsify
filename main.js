@@ -1,4 +1,3 @@
-// File: main.js
 const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const path = require('path');
 const { spawn } = require('child_process');
@@ -28,6 +27,16 @@ app.whenReady().then(() => {
     });
     return result.filePaths[0];
   });
+    ipcMain.handle('select-output-path', async (event, defaultFileName) => {
+    const result = await dialog.showSaveDialog({
+      defaultPath: defaultFileName,
+      filters: [
+        { name: 'Video Files', extensions: ['mp4', 'mov', 'avi', 'mkv', 'webm', 'wmv', 'flv', '3gp', 'ogv'] },
+        { name: 'All Files', extensions: ['*'] }
+      ]
+    });
+    return result.canceled ? null : result.filePath;
+  });
   
   ipcMain.handle('check-file-exists', async (event, filePath) => {
     const fs = require('fs');
@@ -42,7 +51,7 @@ app.whenReady().then(() => {
       title: options.title || 'Confirm',
       message: options.message || 'Are you sure?'
     });
-    return result.response === 0; // Returns true if "Yes" was clicked
+    return result.response === 0; // true if "Yes" was clicked
   });
   ipcMain.handle('process-video', async (event, inputPath, outputPath) => {
     return new Promise((resolve, reject) => {
@@ -52,7 +61,7 @@ app.whenReady().then(() => {
         : path.join(__dirname, 'ffmpeg', 'ffmpegT.exe');
         
       const args = [
-        '-y',  // This flag tells FFmpeg to overwrite files without asking
+        '-y',  // overwrite files without asking again
         '-i', inputPath,
         '-filter_complex',
         "[0:v]scale=-2:1920,crop=1080:1920:(in_w-1080)/2:0,boxblur=20:5[bg];[0:v]scale=1080:-2[fg];[bg][fg]overlay=(W-w)/2:(H-h)/2",
@@ -62,7 +71,7 @@ app.whenReady().then(() => {
 
       const ffmpeg = spawn(ffmpegPath, args);
       
-      // Track processing progress
+      // processing progress
       let duration = 0;
       let progressTime = 0;
 
@@ -70,7 +79,7 @@ app.whenReady().then(() => {
         const output = data.toString();
         console.log(output);
         
-        // Try to extract duration
+        // get the duration
         if (!duration) {
           const durationMatch = output.match(/Duration: (\d+):(\d+):(\d+)\.(\d+)/);
           if (durationMatch) {
@@ -81,7 +90,7 @@ app.whenReady().then(() => {
           }
         }
         
-        // Try to extract current time
+        // get current time
         const timeMatch = output.match(/time=(\d+):(\d+):(\d+)\.(\d+)/);
         if (timeMatch && duration) {
           const hours = parseInt(timeMatch[1]);
