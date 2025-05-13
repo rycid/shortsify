@@ -2,6 +2,9 @@ const { app, BrowserWindow, ipcMain, dialog, shell } = require('electron');
 const path = require('path');
 const { spawn } = require('child_process');
 
+// to track the ffmpeg process
+let activeFFmpegProcess = null;
+
 function createWindow() {
   const win = new BrowserWindow({
     width: 800,
@@ -104,6 +107,27 @@ app.whenReady().then(() => {
     }
   });
   
+  ipcMain.handle('cancel-processing', async () => {
+    if (activeFFmpegProcess) {
+      try {
+        // for windows, gotta kill the process forcefully; should probably improve this
+        const { exec } = require('child_process');
+        
+        const pid = activeFFmpegProcess.pid;
+        
+        exec(`taskkill /pid ${pid} /T /F`);
+        
+        activeFFmpegProcess = null;
+        return { success: true };
+      } catch (err) {
+        console.error('Failed to cancel processing:', err);
+        return { success: false, error: err.message };
+      }
+    } else {
+      return { success: false, error: 'No active process' };
+    }
+  });
+  
   ipcMain.handle('process-video', async (event, inputPath, outputPath, speedSetting) => {
     return new Promise((resolve, reject) => {
     //   const ffmpegPath = path.join(__dirname, 'ffmpeg', 'ffmpegT.exe');
@@ -142,6 +166,8 @@ app.whenReady().then(() => {
 
       const ffmpeg = spawn(ffmpegPath, args);
       
+      activeFFmpegProcess = ffmpeg;
+      
       // processing progress
       let duration = 0;
       let progressTime = 0;
@@ -175,8 +201,18 @@ app.whenReady().then(() => {
       });
 
       ffmpeg.on('exit', code => {
+        activeFFmpegProcess = null;
+        
         if (code === 0) resolve('Done');
+        else if (code === null || code === 255) {
+          reject('Processing cancelled');
+        } 
         else reject('FFmpeg failed with code ' + code);
+      });
+      
+      ffmpeg.on('error', err => {
+        activeFFmpegProcess = null;        
+        reject('FFmpeg error: ' + err.message);
       });
     });
   });
