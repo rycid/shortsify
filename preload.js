@@ -7,5 +7,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onProgressUpdate: (callback) => ipcRenderer.on('progress-update', callback),
   checkFileExists: (filePath) => ipcRenderer.invoke('check-file-exists', filePath),
   showConfirmDialog: (options) => ipcRenderer.invoke('show-confirm-dialog', options),
-  openFileLocation: (filePath) => ipcRenderer.invoke('open-file-location', filePath)
+  openFileLocation: (filePath) => ipcRenderer.invoke('open-file-location', filePath),
+  cancelProcessing: () => ipcRenderer.invoke('cancel-processing')
 });
