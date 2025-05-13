@@ -1,6 +1,7 @@
 const selectBtn = document.getElementById('select');
 const selectOutputBtn = document.getElementById('select-output');
 const processBtn = document.getElementById('process');
+const cancelBtn = document.getElementById('cancel-btn');
 const statusEl = document.getElementById('status');
 const fileDisplayEl = document.getElementById('file-display');
 const outputDisplayEl = document.getElementById('output-display');
@@ -49,6 +50,27 @@ document.getElementById('select').addEventListener('click', async () => {
     processBtn.disabled = false;
     
     statusEl.innerText = 'Ready to process';
+  }
+});
+
+cancelBtn.addEventListener('click', async () => {
+  try {
+    statusEl.innerText = 'Cancelling...';
+    const result = await window.electronAPI.cancelProcessing();
+    
+    if (result.success) {
+      progressBar.style.width = '0%';
+      statusEl.innerHTML = '<span style="color: #ff4d4f">Processing cancelled</span>';
+      
+      selectBtn.disabled = false;
+      selectOutputBtn.disabled = false;
+      processBtn.disabled = false;
+    } else {
+      statusEl.innerText = 'Failed to cancel: ' + (result.error || 'Unknown error');
+    }
+  } catch (err) {
+    console.error('Error while cancelling:', err);
+    statusEl.innerText = 'Error while cancelling: ' + err;
   }
 });
 
@@ -145,5 +167,11 @@ document.getElementById('process').addEventListener('click', async () => {
     selectBtn.disabled = false;
     selectOutputBtn.disabled = false;
     processBtn.disabled = false;
+    
+    setTimeout(() => {
+      if (!statusEl.innerText.includes('Processing:')) {
+        progressContainer.style.display = 'none';
+      }
+    }, 1500);
   }
 });
