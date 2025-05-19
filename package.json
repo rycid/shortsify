@@ -9,6 +9,8 @@
     "dev": "electron ."
   },
   "build": {
+    "appId": "com.rycid.shortsify",
+    "productName": "Shortsify",
     "extraResources": [
       {
         "from": "ffmpeg/",
@@ -22,16 +24,23 @@
       "oneClick": false,
       "allowToChangeInstallationDirectory": true
     },
-    "asar": true
+    "asar": true,
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "rycid",
+        "repo": "shortsify"
+      }
+    ]
   },
+
   "keywords": [],
   "author": "@rycid",
   "license": "ISC",
-  "dependencies": {
-  },
   "devDependencies": {
     "electron": "^36.2.0",
     "electron-builder": "^26.0.12",
-    "electron-packager": "^17.1.2"
+    "electron-packager": "^17.1.2",
+    "electron-updater": "^6.6.2"
   }
 }
